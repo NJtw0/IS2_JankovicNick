@@ -1,181 +1,170 @@
 """
-Dieses Fachmodul verwaltet die lokale SQLite-Datenbank für das
-Bestandsmanagement-System (Kühlschrank und Einkaufsliste).
+Fachmodul für die Datenbankanbindung.
+Verwaltet SQLite-Operationen für den Kühlschrank und die Einkaufsliste.
+Beinhaltet automatische Umrechnung von Einheiten (kg -> g, l -> ml) und Daten-Normalisierung.
 """
 import sqlite3
 import os
 
-# Stellt sicher, dass der Ordner existiert, falls man das Modul isoliert testet
-os.makedirs("daten", exist_ok=True) 
-
+os.makedirs("daten", exist_ok=True)
 DATENBANK_PFAD = "daten/bestandsmanagement.db"
 
+
+def normiere_einheit(menge: float, einheit: str) -> tuple:
+    """
+    Rechnet gängige Einheiten in die Haupteinheiten (g, ml, Stück) um.
+    Bei unbekannten Eingaben greift der Standardfall ('Stück').
+    """
+    e_klein = einheit.strip().lower()
+    
+    # Gewicht -> Haupteinheit: g
+    if e_klein in ['kg', 'kilo', 'kilogramm']:
+        return menge * 1000.0, 'g'
+    elif e_klein in ['g', 'gramm', 'gr']:
+        return menge, 'g'
+        
+    # Volumen -> Haupteinheit: ml
+    elif e_klein in ['l', 'liter', 'lit']:
+        return menge * 1000.0, 'ml'
+    elif e_klein in ['ml', 'milliliter']:
+        return menge, 'ml'
+        
+    # Zählbare Dinge -> Haupteinheit: Stück
+    elif e_klein in ['stück', 'stk', 'st', 'x']:
+        return menge, 'Stück'
+        
+    # Manche Einheiten wollen wir vielleicht behalten (optional)
+    elif e_klein in ['dose', 'dosen', 'packung', 'prise', 'el', 'tl', 'bund']:
+        return menge, e_klein.title()
+        
+    # Standardfall / Fallback für Tippfehler oder leere Eingaben
+    else:
+        return menge, 'Stück'
+
+
 def init_datenbank() -> None:
-    """
-    Initialisiert die Datenbanktabellen für den Kühlschrank und die Einkaufsliste,
-    falls diese noch nicht im Dateisystem existieren.
-    """
+    """Erstellt die Tabellen für Kühlschrank und Einkaufsliste, falls sie nicht existieren."""
     verbindung = sqlite3.connect(DATENBANK_PFAD)
     cursor = verbindung.cursor()
-
-    # Tabelle für den aktuellen Lebensmittelbestand (Kühlschrank)
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS kuehlschrank (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            produkt_name TEXT UNIQUE NOT NULL,
-            menge REAL NOT NULL,
-            einheit TEXT NOT NULL
+            produkt_name TEXT PRIMARY KEY,
+            menge REAL,
+            einheit TEXT
         )
     """)
-
-    # Tabelle für die Einkaufsliste
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS einkaufsliste (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            produkt_name TEXT UNIQUE NOT NULL,
-            menge REAL NOT NULL,
-            einheit TEXT NOT NULL
+            produkt_name TEXT PRIMARY KEY,
+            menge REAL,
+            einheit TEXT
         )
     """)
-
+    
     verbindung.commit()
     verbindung.close()
 
 
-def kuehlschrank_bestand_aktualisieren(
-    produkt_name: str, menge_aenderung: float, einheit: str
-) -> None:
-    """
-    Fügt ein Produkt zum Kühlschrank hinzu oder aktualisiert die vorhandene Menge.
-    Wenn die Gesamtmenge auf oder unter 0 fällt, wird das Produkt gelöscht.
-
-    Args:
-        produkt_name (str): Der Name des Lebensmittels.
-        menge_aenderung (float): Die hinzuzufügende oder abzuziehende Menge.
-        einheit (str): Die Maßeinheit (z. B. 'g', 'Liter', 'Stück').
-    """
+def kuehlschrank_bestand_aktualisieren(produkt_name: str, menge: float, einheit: str) -> None:
+    """Fügt ein Produkt hinzu oder aktualisiert die Menge (Einheiten werden automatisch umgerechnet)."""
+    produkt_name = produkt_name.strip().title()
+    norm_menge, norm_einheit = normiere_einheit(menge, einheit)
+    
     verbindung = sqlite3.connect(DATENBANK_PFAD)
     cursor = verbindung.cursor()
-
-    cursor.execute(
-        "SELECT menge FROM kuehlschrank WHERE produkt_name = ?", (produkt_name,)
-    )
+    
+    # Prüfen, ob das Produkt schon da ist
+    cursor.execute("SELECT menge, einheit FROM kuehlschrank WHERE produkt_name = ?", (produkt_name,))
     ergebnis = cursor.fetchone()
-
+    
     if ergebnis:
-        neue_menge = ergebnis[0] + menge_aenderung
+        alte_menge = ergebnis[0]
+        # Wenn die Einheit übereinstimmt, normal addieren
+        neue_menge = alte_menge + norm_menge
+        
         if neue_menge <= 0:
-            cursor.execute(
-                "DELETE FROM kuehlschrank WHERE produkt_name = ?", (produkt_name,)
-            )
+            cursor.execute("DELETE FROM kuehlschrank WHERE produkt_name = ?", (produkt_name,))
         else:
-            cursor.execute(
-                "UPDATE kuehlschrank SET menge = ? WHERE produkt_name = ?",
-                (neue_menge, produkt_name),
-            )
+            cursor.execute("UPDATE kuehlschrank SET menge = ? WHERE produkt_name = ?", 
+                           (neue_menge, produkt_name))
     else:
-        if menge_aenderung > 0:
-            cursor.execute(
-                "INSERT INTO kuehlschrank (produkt_name, menge, einheit) VALUES (?, ?, ?)",
-                (produkt_name, menge_aenderung, einheit),
-            )
-
+        if norm_menge > 0:
+            cursor.execute("INSERT INTO kuehlschrank (produkt_name, menge, einheit) VALUES (?, ?, ?)", 
+                           (produkt_name, norm_menge, norm_einheit))
+            
     verbindung.commit()
     verbindung.close()
 
 
 def hole_kuehlschrank_bestand() -> list:
-    """
-    Ruft den gesamten aktuellen Inhalt des Kühlschranks aus der Datenbank ab.
-
-    Returns:
-        list: Eine Liste von Tupeln (produkt_name, menge, einheit).
-    """
+    """Gibt den gesamten Bestand alphabetisch sortiert zurück."""
     verbindung = sqlite3.connect(DATENBANK_PFAD)
     cursor = verbindung.cursor()
-
-    cursor.execute("SELECT produkt_name, menge, einheit FROM kuehlschrank")
-    aktueller_bestand = cursor.fetchall()
-
+    cursor.execute("SELECT produkt_name, menge, einheit FROM kuehlschrank ORDER BY produkt_name")
+    daten = cursor.fetchall()
     verbindung.close()
-    return aktueller_bestand
+    return daten
 
 
-def einkaufsliste_aktualisieren(
-    produkt_name: str, menge_aenderung: float, einheit: str
-) -> None:
-    """
-    Fügt ein Produkt zur Einkaufsliste hinzu oder modifiziert dessen Menge.
-    Fällt die Menge auf oder unter 0, wird der Eintrag entfernt.
-
-    Args:
-        produkt_name (str): Der Name des benötigten Produkts.
-        menge_aenderung (float): Die Mengenänderung auf dem Einkaufszettel.
-        einheit (str): Die Maßeinheit des Produkts.
-    """
+def einkaufsliste_aktualisieren(produkt_name: str, menge: float, einheit: str) -> None:
+    """Fügt ein Produkt zur Einkaufsliste hinzu oder aktualisiert es (mit Umrechnung)."""
+    produkt_name = produkt_name.strip().title()
+    norm_menge, norm_einheit = normiere_einheit(menge, einheit)
+    
     verbindung = sqlite3.connect(DATENBANK_PFAD)
     cursor = verbindung.cursor()
-
-    cursor.execute(
-        "SELECT menge FROM einkaufsliste WHERE produkt_name = ?", (produkt_name,)
-    )
+    
+    cursor.execute("SELECT menge FROM einkaufsliste WHERE produkt_name = ?", (produkt_name,))
     ergebnis = cursor.fetchone()
-
+    
     if ergebnis:
-        neue_menge = ergebnis[0] + menge_aenderung
+        neue_menge = ergebnis[0] + norm_menge
         if neue_menge <= 0:
-            cursor.execute(
-                "DELETE FROM einkaufsliste WHERE produkt_name = ?", (produkt_name,)
-            )
+            cursor.execute("DELETE FROM einkaufsliste WHERE produkt_name = ?", (produkt_name,))
         else:
-            cursor.execute(
-                "UPDATE einkaufsliste SET menge = ? WHERE produkt_name = ?",
-                (neue_menge, produkt_name),
-            )
+            cursor.execute("UPDATE einkaufsliste SET menge = ? WHERE produkt_name = ?", 
+                           (neue_menge, produkt_name))
     else:
-        if menge_aenderung > 0:
-            cursor.execute(
-                "INSERT INTO einkaufsliste (produkt_name, menge, einheit) VALUES (?, ?, ?)",
-                (produkt_name, menge_aenderung, einheit),
-            )
-
+        if norm_menge > 0:
+            cursor.execute("INSERT INTO einkaufsliste (produkt_name, menge, einheit) VALUES (?, ?, ?)", 
+                           (produkt_name, norm_menge, norm_einheit))
+            
     verbindung.commit()
     verbindung.close()
 
+
 def hole_einkaufsliste() -> list:
-    """
-    Ruft den gesamten aktuellen Inhalt der Einkaufsliste aus der Datenbank ab.
-    
-    Returns:
-        list: Eine Liste von Tupeln (produkt_name, menge, einheit).
-    """
+    """Gibt die komplette Einkaufsliste alphabetisch sortiert zurück."""
     verbindung = sqlite3.connect(DATENBANK_PFAD)
     cursor = verbindung.cursor()
-
-    cursor.execute("SELECT produkt_name, menge, einheit FROM einkaufsliste")
-    aktuelle_liste = cursor.fetchall()
-
+    cursor.execute("SELECT produkt_name, menge, einheit FROM einkaufsliste ORDER BY produkt_name")
+    daten = cursor.fetchall()
     verbindung.close()
-    return aktuelle_liste
+    return daten
 
-# Der Main-Guard Block
+
+def bearbeite_kuehlschrank_produkt(alter_name: str, neuer_name: str, neue_menge: float, neue_einheit: str) -> None:
+    """Überschreibt ein bestehendes Produkt explizit mit neuen Werten (wird ebenfalls umgerechnet)."""
+    neuer_name = neuer_name.strip().title()
+    norm_menge, norm_einheit = normiere_einheit(neue_menge, neue_einheit)
+    
+    verbindung = sqlite3.connect(DATENBANK_PFAD)
+    cursor = verbindung.cursor()
+    
+    if norm_menge <= 0:
+        cursor.execute("DELETE FROM kuehlschrank WHERE produkt_name = ?", (alter_name,))
+    else:
+        cursor.execute("""
+            UPDATE kuehlschrank 
+            SET produkt_name = ?, menge = ?, einheit = ? 
+            WHERE produkt_name = ?
+        """, (neuer_name, norm_menge, norm_einheit, alter_name))
+        
+    verbindung.commit()
+    verbindung.close()
+
+
 if __name__ == "__main__":
-    print("--- Isolierter Modultest für datenbank_modul.py ---")
-
-    # 1. Datenbank initialisieren
-    init_datenbank()
-    print("Datenbank erfolgreich initialisiert.")
-
-    # 2. Testdaten in den Kühlschrank legen
-    kuehlschrank_bestand_aktualisieren("Milch", 2.0, "Liter")
-    kuehlschrank_bestand_aktualisieren("Eier", 6.0, "Stück")
-    kuehlschrank_bestand_aktualisieren("Butter", 250.0, "g")    
-
-    # 3. Bestand auslesen
-    print("Bestand nach dem Einkauf:", hole_kuehlschrank_bestand())
-
-    # 4. Test: Etwas verbrauchen (z. B. nach dem Kochen)
-    kuehlschrank_bestand_aktualisieren("Milch", -0.5, "Liter")
-    kuehlschrank_bestand_aktualisieren("Eier", -6.0, "Stück")  # Eier müssten jetzt gelöscht sein
-
-    print("Bestand nach dem Kochen:", hole_kuehlschrank_bestand())
+    print("Bitte starte das Programm über die __main__.py")

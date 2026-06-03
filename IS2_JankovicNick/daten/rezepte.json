@@ -1,1 +1,145 @@
-[{"name": "Spaghetti Carbonara", "zutaten": [{"name": "Spaghetti", "menge": 200, "einheit": "g"}, {"name": "Speck", "menge": 100, "einheit": "g"}]}]
+[
+    {
+        "name": "Spaghetti Carbonara",
+        "zutaten": [
+            {
+                "name": "Spaghetti",
+                "menge": 200,
+                "einheit": "g"
+            },
+            {
+                "name": "Speck",
+                "menge": 100,
+                "einheit": "g"
+            }
+        ]
+    },
+    {
+        "name": "Chinasauce süß-scharf",
+        "zutaten": [
+            {
+                "menge": 0.2,
+                "einheit": "g",
+                "name": "Ei"
+            },
+            {
+                "menge": 0.6,
+                "einheit": "EL",
+                "name": "Speiseöl"
+            },
+            {
+                "menge": 2.0,
+                "einheit": "Stück",
+                "name": "Zwiebel"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "zehe",
+                "name": "Knoblauch"
+            },
+            {
+                "menge": 125.0,
+                "einheit": "ml",
+                "name": "Sherry"
+            },
+            {
+                "menge": 3.0,
+                "einheit": "EL",
+                "name": "Tomatenketchup"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "  Chili oder Tabascosauce"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "  Salz"
+            }
+        ],
+        "schritte": [
+            "Speiseöl erhitzen, Zwiebeln und Knoblauch darin etwa 3 Minuten dünsten lassen.",
+            "Sherry und Tomatenketchup hinzufügen, aufkochen lassen.",
+            "Mit Chili oder Tabascosauce und Salz abschmecken.",
+            "Die Sauce zugedeckt abkühlen lassen."
+        ]
+    },
+    {
+        "name": "Cheeseburger",
+        "zutaten": [
+            {
+                "menge": 375.0,
+                "einheit": "g",
+                "name": "Hackfleisch"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "Brötchen"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "Ei"
+            },
+            {
+                "menge": 30.0,
+                "einheit": "TL",
+                "name": "Senf"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Salz"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Pfeffer"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Paprikapulver"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Speiseöl"
+            },
+            {
+                "menge": 4.0,
+                "einheit": "None",
+                "name": "Chester-Käse"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Tomatenketchup"
+            },
+            {
+                "menge": 1.0,
+                "einheit": "Stück",
+                "name": "None None Petersilie"
+            },
+            {
+                "menge": 4.0,
+                "einheit": "None",
+                "name": "Körnerbrötchen"
+            },
+            {
+                "menge": 4.0,
+                "einheit": "None",
+                "name": "Salatblätter"
+            }
+        ],
+        "schritte": [
+            "Zwiebel abziehen, würfeln, mit Hackfleisch, Brötchen, Ei und Senf en, mit Salz, Pfeffer und Paprikapulver edelsüß.",
+            "Aus dem Fleischteig 4 Frikadellen w formen, mit Speiseöl bestreichen, unter den vorgeheizten Grill schieben, zunächst von der einen, dann von der anderen Seite grillen.",
+            "Chester-Käse (in der Größe der Frikadellen) über Eck auf die garen Frikadellen legen, sie noch einmal unter den Grill schieben.",
+            "Auf die Cheeseburger nach Belieben Tomatenketchup und Petersilie geben.",
+            "Brötchen durchschneiden, mit Salat-Blatt belegen, die Cheeseburger dazwischen legen."
+        ]
+    }
+]

@@ -1,100 +1,64 @@
 """
-Fachmodul für die optische Zeichenerkennung (OCR).
-Liest Bilder von Rezepten ein, erkennt den Text und filtert Zutaten heraus.
+Fachmodul für Texterkennung (OCR) und KI-Verarbeitung.
+Liest Bilder mit Tesseract aus und strukturiert die Daten mit einer lokalen KI (Ollama).
 """
 import re
+import json
 import pytesseract
 from PIL import Image
+import ollama
 
-# Das sagt Python, wo das frisch installierte Programm liegt
+# Tesseract-Pfad für Windows
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def lese_text_aus_bild(bild_pfad: str) -> str:
-    """
-    Lädt ein Bild von der Festplatte und führt eine optische Zeichenerkennung durch.
-    
-    Args:
-        bild_pfad (str): Der relative oder absolute Pfad zur Bilddatei.
-        
-    Returns:
-        str: Der erkannte Text aus dem Bild. Gibt einen Leerstring bei Fehler zurück.
-    """
+    """Extrahiert den rohen Text aus einem Bild."""
     try:
-        # Öffnet das Bild mit der Pillow-Bibliothek
-        rezept_bild = Image.open(bild_pfad)
-        # Nutzt Tesseract, um den Text (idealerweise auf Deutsch) zu extrahieren
-        erkannter_text = pytesseract.image_to_string(rezept_bild, lang='deu')
-        return erkannter_text
-    except Exception as fehler:
-        print(f"Fehler bei der Bildverarbeitung von {bild_pfad}: {fehler}")
+        bild = Image.open(bild_pfad)
+        # Verwende das deutsche Sprachpaket für Umlaute
+        rohtext = pytesseract.image_to_string(bild, lang='deu')
+        return rohtext
+    except Exception as e:
+        print(f"Fehler bei der Bildverarbeitung: {e}")
         return ""
 
-def bereinige_erkannten_text(rohtext: str) -> list:
-    """
-    Nimmt den rohen OCR-Text, zerlegt ihn in Zeilen und entfernt leere Zeilen.
-    
-    Args:
-        rohtext (str): Der unformatierte Text aus der Bilderkennung.
-        
-    Returns:
-        list: Eine Liste von bereinigten Textzeilen.
-    """
-    alle_zeilen = rohtext.split('\n')
-    bereinigte_zeilen = []
-    
-    for zeile in alle_zeilen:
-        saubere_zeile = zeile.strip()
-        # Nur Zeilen behalten, die nicht komplett leer sind
-        if saubere_zeile:
-            bereinigte_zeilen.append(saubere_zeile)
-            
-    return bereinigte_zeilen
 
-def extrahiere_zutaten_liste(text_zeilen: list) -> list:
+def parse_rezept_mit_ki(rohtext: str) -> dict:
     """
-    Filtert aus den Textzeilen mögliche Zutaten heraus. 
-    Nimmt an, dass Zutatenzeilen mit einer Ziffer (Menge) beginnen.
-    
-    Args:
-        text_zeilen (list): Die bereinigten Textzeilen aus dem Rezept.
-        
-    Returns:
-        list: Eine Liste der erkannten Zutaten.
+    Übergibt den unsauberen OCR-Text an Llama 3.2, um ein sauberes, 
+    fehlerfreies JSON-Format mit Zutaten und Schritten zu generieren.
     """
-    gefundene_zutaten = []
-    # Regulärer Ausdruck: Sucht Zeilen, die mit einer Ziffer (\d) beginnen
-    such_muster = r"^\d+.*"
-    
-    for zeile in text_zeilen:
-        if re.match(such_muster, zeile):
-            gefundene_zutaten.append(zeile)
-            
-    return gefundene_zutaten
+    if not rohtext.strip():
+        return {}
 
-# Isolierter Testblock für die automatische Code-Prüfung und Manuelle Tests
-if __name__ == "__main__":
-    print("--- Isolierter Modultest für ocr_modul.py ---")
+    prompt = f"""
+    Du bist ein präziser Daten-Extraktor. Extrahiere aus dem folgenden unsauberen OCR-Text eines Rezepts den Namen, die Zutaten und die Zubereitungsschritte.
+    Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt. Keine Erklärungen davor oder danach.
+    Format-Beispiel:
+    {{
+      "name": "Name des Rezepts",
+      "zutaten": [
+        {{"name": "Mehl", "menge": 250.0, "einheit": "g"}},
+        {{"name": "Eier", "menge": 2.0, "einheit": "Stück"}}
+      ],
+      "schritte": ["Erster Schritt...", "Zweiter Schritt..."]
+    }}
     
-    # Da wir für den Test nicht zwingend ein echtes Bild voraussetzen wollen,
-    # simulieren wir das Verhalten der pytesseract-Ausgabe.
-    mock_ocr_text = """
-    Omas Pfannkuchen Rezept
-    
-    Zutaten:
-    250 g Mehl
-    2 Eier
-    0.5 Liter Milch
-    Prise Salz
-    
-    Zubereitung:
-    Alles gut verrühren und in der Pfanne ausbacken.
+    Hier ist der zu verarbeitende Text:
+    {rohtext}
     """
     
-    print("Simulierter Rohtext aus dem Bild:")
-    print(mock_ocr_text)
-    print("-" * 30)
-    
-    zeilen_liste = bereinige_erkannten_text(mock_ocr_text)
-    zutaten = extrahiere_zutaten_liste(zeilen_liste)
-    
-    print(f"Gefundene Zutaten-Zeilen: {zutaten}")
+    try:
+        # Aufruf des lokalen Llama 3.2 Modells
+        antwort = ollama.chat(model='llama3.2', messages=[{'role': 'user', 'content': prompt}])
+        content = antwort['message']['content']
+        
+        # Sicherheits-Check: Falls die KI Markdown-Codeblöcke (```json) mitsendet
+        match = re.search(r'\{.*\}', content, re.DOTALL)
+        if match:
+            content = match.group(0)
+            
+        return json.loads(content)
+    except Exception as e:
+        print(f"Fehler bei der KI-Verarbeitung: {e}")
+        return {}
