@@ -6,6 +6,9 @@ import re
 import pytesseract
 from PIL import Image
 
+# Das sagt Python, wo das frisch installierte Programm liegt
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 def lese_text_aus_bild(bild_pfad: str) -> str:
     """
     Lädt ein Bild von der Festplatte und führt eine optische Zeichenerkennung durch.

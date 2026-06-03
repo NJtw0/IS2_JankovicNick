@@ -142,6 +142,21 @@ def einkaufsliste_aktualisieren(
     verbindung.commit()
     verbindung.close()
 
+def hole_einkaufsliste() -> list:
+    """
+    Ruft den gesamten aktuellen Inhalt der Einkaufsliste aus der Datenbank ab.
+    
+    Returns:
+        list: Eine Liste von Tupeln (produkt_name, menge, einheit).
+    """
+    verbindung = sqlite3.connect(DATENBANK_PFAD)
+    cursor = verbindung.cursor()
+
+    cursor.execute("SELECT produkt_name, menge, einheit FROM einkaufsliste")
+    aktuelle_liste = cursor.fetchall()
+
+    verbindung.close()
+    return aktuelle_liste
 
 # Der Main-Guard Block
 if __name__ == "__main__":
