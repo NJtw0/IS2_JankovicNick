@@ -1,32 +1,27 @@
 """
-Einstiegspunkt der GUI-Anwendung. Wird bei python -m mein_projekt ausgeführt.
-Koordiniert den Start, enthält aber keine eigene Fachlogik (Bereich C konform).
+Einstiegspunkt der GUI-Anwendung.
 """
 import os
-from .datenbank_modul import init_datenbank
-from .gui_modul import starte_app
 
+from . import datenbank_modul
+from . import gui_modul
+from . import ocr_modul
+from . import rezept_modul
+from . import visualisierung_modul
+from . import export_modul
 
 def bereite_ordner_vor() -> None:
-    """Hilfsfunktion: Stellt sicher, dass die Arbeitsordner existieren."""
-    os.makedirs("daten", exist_ok=True)
-    os.makedirs("bilder", exist_ok=True)
-
+    """Stellt sicher, dass die benötigten Arbeitsordner existieren."""
+    basis = os.path.dirname(__file__)
+    os.makedirs(os.path.join(basis, "daten"), exist_ok=True)
+    os.makedirs(os.path.join(basis, "bilder"), exist_ok=True)
 
 def main() -> None:
-    """Orchestriert den Start des Programms."""
-    print("Starte Kühlschrank-Manager mit grafischer Oberfläche...")
-    
-    # 1. Infrastruktur sichern
+    """Orchestriert den Ablauf."""
     bereite_ordner_vor()
-    init_datenbank()
-    
-    # 2. GUI laden (Das Programm pausiert hier, bis das Fenster geschlossen wird)
-    starte_app()
-    
-    print("Programm beendet.")
+    # Wir rufen die Funktionen über die Modul-Namespaces auf
+    datenbank_modul.init_datenbank()
+    gui_modul.starte_app()
 
-
-# KO-Kriterium: Main-Aufruf
 if __name__ == "__main__":
     main()

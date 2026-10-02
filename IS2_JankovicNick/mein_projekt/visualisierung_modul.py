@@ -1,125 +1,69 @@
-"""
-Fachmodul für die visuelle Aufbereitung der Bestandsdaten.
-Erstellt Diagramme zur Übersicht des Kühlschrankinhalts.
-"""
 import matplotlib.pyplot as plt
 
+def _extrahiere_chart_daten(bestand_liste: list) -> tuple:
+    """Interne Hilfsfunktion: Bereitet die Rohdaten für Matplotlib auf."""
+    return [e[0] for e in bestand_liste], [e[1] for e in bestand_liste]
+
 def erstelle_bestand_balkendiagramm(bestand_liste: list) -> None:
-    """
-    Erstellt ein Balkendiagramm, das die absoluten Mengen der 
-    Lebensmittel im Kühlschrank anzeigt.
-    
-    Args:
-        bestand_liste (list): Liste von Tupeln (produkt_name, menge, einheit).
-    """
+    """Erstellt und zeigt ein Balkendiagramm des Bestands."""
     if not bestand_liste:
-        print("Der Kühlschrank ist leer, kein Diagramm möglich.")
         return
-
-    # Daten für das Diagramm entpacken
-    produkte = [eintrag[0] for eintrag in bestand_liste]
-    mengen = [eintrag[1] for eintrag in bestand_liste]
-
+    produkte, mengen = _extrahiere_chart_daten(bestand_liste)
+    
     plt.figure(figsize=(10, 6))
     plt.bar(produkte, mengen, color='skyblue', edgecolor='black')
     
-    plt.title('Aktueller Kühlschrankbestand', fontsize=16)
-    plt.xlabel('Produkte', fontsize=12)
+    plt.title('Aktueller Bestand', fontsize=14)
     plt.ylabel('Menge', fontsize=12)
-    plt.xticks(rotation=45, ha='right')
+    plt.xticks(rotation=45, ha='right') 
     
-    # Diagramm anzeigen und danach den Speicher freigeben
     plt.tight_layout()
     plt.show()
-
-
-def erstelle_kategorie_kreisdiagramm(kategorie_daten: dict) -> None:
-    """
-    Erstellt ein Kreisdiagramm zur prozentualen Verteilung der
-    Lebensmittel-Kategorien (z.B. wie viel Obst vs. Gemüse).
-    
-    Args:
-        kategorie_daten (dict): Dictionary mit Kategorien und ihren Anteilen 
-                                z.B. {'Gemüse': 5, 'Milchprodukte': 3}.
-    """
-    if not kategorie_daten:
-        print("Keine Kategoriedaten vorhanden.")
-        return
-
-    kategorien = list(kategorie_daten.keys())
-    werte = list(kategorie_daten.values())
-
-    plt.figure(figsize=(8, 8))
-    plt.pie(werte, labels=kategorien, autopct='%1.1f%%', startangle=140, 
-            colors=['#ff9999','#66b3ff','#99ff99','#ffcc99'])
-    
-    plt.title('Bestandsverteilung nach Kategorien', fontsize=16)
-    plt.show()
-
 
 def speichere_diagramm_als_bild(bestand_liste: list, dateiname: str) -> bool:
-    """
-    Generiert ein Bestands-Balkendiagramm und speichert es direkt als
-    Bilddatei ab, ohne es dem Nutzer auf dem Bildschirm anzuzeigen.
-    
-    Args:
-        bestand_liste (list): Die aktuellen Kühlschrankdaten.
-        dateiname (str): Der gewünschte Dateiname (z.B. 'bestand.png').
-        
-    Returns:
-        bool: True, wenn erfolgreich gespeichert wurde, sonst False.
-    """
-    if not bestand_liste:
+    """Speichert das Diagramm als Bilddatei."""
+    if not bestand_liste: 
         return False
-        
-    produkte = [eintrag[0] for eintrag in bestand_liste]
-    mengen = [eintrag[1] for eintrag in bestand_liste]
-
+    produkte, mengen = _extrahiere_chart_daten(bestand_liste)
+    
     plt.figure(figsize=(10, 6))
-    plt.bar(produkte, mengen, color='lightgreen')
+    plt.bar(produkte, mengen, color='lightgreen', edgecolor='black')
+    
     plt.title('Automatischer Bestandsreport')
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=45, ha='right')
+    
     plt.tight_layout()
-    
-    try:
-        plt.savefig(dateiname)
-        plt.close() # Verhindert, dass das Bild im Hintergrund offen bleibt
-        return True
-    except Exception as e:
-        print(f"Fehler beim Speichern des Diagramms: {e}")
-        return False
+    plt.savefig(dateiname)
+    plt.close()
+    return True
 
-
-# Main-Guard für die isolierte Testbarkeit laut Kriterienkatalog
 if __name__ == "__main__":
-    print("--- Isolierter Modultest für visualisierung_modul.py ---")
+    # --- ISOLIERTER TESTLAUF FÜR DIE VISUALISIERUNG ---
+    print("Starte Visualisierungs-Testlauf...")
     
-    # 1. Testdaten vorbereiten (Mocking)
-    test_bestand = [
-        ("Milch", 2.0, "Liter"),
-        ("Eier", 6.0, "Stück"),
-        ("Spaghetti", 500.0, "g"),
-        ("Tomaten", 6.0, "Stück"),
-        ("Käse", 250.0, "g")
+    # Künstlicher Lagerbestand mit unterschiedlichen Mengen und langen Namen
+    demo_lagerbestand = [
+        ("Kirschtomaten", 15.0, "Stück"),
+        ("Weizenmehl", 2.5, "kg"),
+        ("Haltbare Vollmilch", 4.0, "Liter"),
+        ("Rinderhackfleisch", 500.0, "g"),
+        ("Goudakäse Am Stück", 1.0, "Block")
     ]
     
-    test_kategorien = {
-        "Milchprodukte": 3,
-        "Getreide": 1,
-        "Gemüse": 1
-    }
+    test_bild_name = "test_bestandsreport.png"
     
-    # 2. Funktionen testen
-    print("Erstelle Balkendiagramm (Fenster sollte sich öffnen)...")
-    erstelle_bestand_balkendiagramm(test_bestand)
+    # 1. Teste den automatischen Bildexport im Hintergrund
+    print(f"1. Teste Bildexport im Hintergrund nach '{test_bild_name}'...")
+    if speichere_diagramm_als_bild(demo_lagerbestand, test_bild_name):
+        print(f" -> Erfolg! Bild wurde im Projektordner erstellt.")
+    else:
+        print(" -> Fehler beim Bildexport.")
+        
+    # 2. Teste das interaktive UI-Fenster
+    print("\n2. Öffne interaktives Diagramm-Fenster...")
+    print("(Schließe das Diagramm-Fenster, um den Testlauf zu beenden.)")
     
-    print("Erstelle Kreisdiagramm (Fenster sollte sich öffnen)...")
-    erstelle_kategorie_kreisdiagramm(test_kategorien)
+    # Ruft die Hauptfunktion auf, die auch die GUI nutzt
+    erstelle_bestand_balkendiagramm(demo_lagerbestand)
     
-    import os
-    os.makedirs("bilder", exist_ok=True) # Zur Sicherheit
-
-    # 3. Speichertest
-    erfolg = speichere_diagramm_als_bild(test_bestand, "bilder/test_report.png")
-    if erfolg:
-        print("Testbild erfolgreich als 'test_report.png' im Ordner 'bilder' gespeichert!")
+    print("Testlauf erfolgreich beendet.")
