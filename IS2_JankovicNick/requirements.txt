@@ -1,5 +1,0 @@
-matplotlib==3.9.0
-ollama==0.6.2
-pillow==11.0.0
-pytesseract==0.3.10
-sv-ttk==1.2.0
